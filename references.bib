@@ -1,0 +1,103 @@
+% references.bib — Bibliography for CFRM 422/522 Strategy Project
+% Funding Rate Contrarian Strategy on BTC-USDT Perpetual Futures
+
+@article{bailey2014deflated,
+  author    = {Bailey, David H. and {L\'{o}pez de Prado}, Marcos},
+  title     = {The Deflated {Sharpe} Ratio: Correcting for Selection Bias, Backtest Overfitting, and Non-Normality},
+  journal   = {Journal of Portfolio Management},
+  year      = {2014},
+  volume    = {40},
+  number    = {5},
+  pages     = {94--107},
+  doi       = {10.3905/jpm.2014.40.5.094},
+  note      = {Introduces the Deflated Sharpe Ratio to adjust for multiple testing bias in strategy selection.}
+}
+
+@article{bailey2017probability,
+  author    = {Bailey, David H. and Borwein, Jonathan M. and {L\'{o}pez de Prado}, Marcos and Zhu, Qiji Jim},
+  title     = {The Probability of Backtest Overfitting},
+  journal   = {Journal of Computational Finance},
+  year      = {2017},
+  volume    = {20},
+  number    = {4},
+  pages     = {39--69},
+  doi       = {10.21314/JCF.2016.322},
+  note      = {Develops the Combinatorial Symmetric Cross-Validation method to estimate the probability of backtest overfitting.}
+}
+
+@article{brunnermeier2009market,
+  author    = {Brunnermeier, Markus K. and Pedersen, Lasse Heje},
+  title     = {Market Liquidity and Funding Liquidity},
+  journal   = {Review of Financial Studies},
+  year      = {2009},
+  volume    = {22},
+  number    = {6},
+  pages     = {2201--2238},
+  doi       = {10.1093/rfs/hhn098},
+  note      = {Shows how funding constraints amplify asset price volatility and create mean-reverting dynamics — relevant to the crowding mechanism we exploit.}
+}
+
+@article{daniel2016momentum,
+  author    = {Daniel, Kent and Moskowitz, Tobias J.},
+  title     = {Momentum Crashes},
+  journal   = {Journal of Financial Economics},
+  year      = {2016},
+  volume    = {122},
+  number    = {2},
+  pages     = {221--247},
+  doi       = {10.1016/j.jfineco.2015.12.002},
+  note      = {Documents crash risk in momentum strategies, analogous to crowding risk in leveraged crypto positions.}
+}
+
+@article{jegadeesh1993returns,
+  author    = {Jegadeesh, Narasimhan and Titman, Sheridan},
+  title     = {Returns to Buying Winners and Selling Losers: {Implications} for Stock Market Efficiency},
+  journal   = {Journal of Finance},
+  year      = {1993},
+  volume    = {48},
+  number    = {1},
+  pages     = {65--91},
+  doi       = {10.1111/j.1540-6261.1993.tb04702.x},
+  note      = {Seminal momentum paper; our contrarian strategy is a foil to momentum — trading the mean reversion in leveraged markets.}
+}
+
+@article{liu2022common,
+  author    = {Liu, Yukun and Tsyvinski, Aleh and Wu, Xi},
+  title     = {Common Risk Factors in Cryptocurrency},
+  journal   = {Journal of Finance},
+  year      = {2022},
+  volume    = {77},
+  number    = {2},
+  pages     = {1133--1177},
+  doi       = {10.1111/jofi.13119},
+  note      = {Identifies momentum, value, and network factors in cryptocurrency returns; informs our understanding of the return-generating process.}
+}
+
+@book{pardo2008evaluation,
+  author    = {Pardo, Robert},
+  title     = {The Evaluation and Optimization of Trading Strategies},
+  edition   = {2},
+  publisher = {Wiley},
+  year      = {2008},
+  note      = {Provides the walk-forward analysis methodology used in Section 8 and the Pardo robustness check in Section 7.}
+}
+
+@techreport{peterson2017trading,
+  author    = {Peterson, Brian},
+  title     = {Developing and Backtesting Systematic Trading Strategies},
+  institution = {SSRN},
+  year      = {2017},
+  note      = {Available at SSRN: https://ssrn.com/abstract=2956347. Practical guide to systematic strategy development; informs our incremental rule-building approach in Section 6.}
+}
+
+@article{shleifer1997limits,
+  author    = {Shleifer, Andrei and Vishny, Robert W.},
+  title     = {The Limits of Arbitrage},
+  journal   = {Journal of Finance},
+  year      = {1997},
+  volume    = {52},
+  number    = {1},
+  pages     = {35--55},
+  doi       = {10.1111/j.1540-6261.1997.tb03807.x},
+  note      = {Explains why mispricings can persist even when arbitrageurs know they exist; relevant to why funding rate extremes are not immediately corrected.}
+}
