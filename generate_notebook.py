@@ -59,6 +59,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import matplotlib
+matplotlib.use("Agg")   # non-interactive backend — required for headless execution
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.gridspec import GridSpec
@@ -1274,10 +1275,11 @@ def wf_single_window(train_start_idx, train_end_idx, test_start_idx, test_end_id
     Returns (is_calmar, oos_calmar, best_params)
     \"\"\"
     if param_grid is None:
+        # Reduced grid for WF speed — full optimization is in Section 7
         param_grid = {
-            "threshold":  [1.0, 1.5, 2.0],
-            "window":     [60, 90, 120],
-            "hold_hours": [8, 16, 24],
+            "threshold":  [1.2, 1.5, 1.8],
+            "window":     [60, 90],
+            "hold_hours": [8, 16],
         }
     
     train_times = all_dates[train_start_idx:train_end_idx]
@@ -1935,7 +1937,8 @@ print()
 print("Hypotheses:")
 print(f"  H1 (IC > 0 at 24h): {'SUPPORTED' if ic_table[ic_table['Horizon']=='fwd_24h']['IC'].abs().max() > 0.02 else 'WEAK'}")
 print(f"  H3 (nonlinear threshold): see Section 7 heatmap")
-print(f"  H4 (WF stability): {'SUPPORTED' if wf_ratio_rolling > 0.3 else 'WEAK'}")
+_wf_ratio = wf_ratio_rolling if 'wf_ratio_rolling' in dir() else 0.0
+print(f"  H4 (WF stability): {'SUPPORTED' if _wf_ratio > 0.3 else 'WEAK'}")
 print()
 print("Key Risk Factors:")
 print("  1. Funding rate regimes can shift (post-FTX market structure change)")
