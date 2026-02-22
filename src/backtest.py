@@ -65,13 +65,29 @@ def run_backtest(
     if active.empty:
         return _empty_result()
 
-    # For each signal, find the next OHLCV bar's open_time
-    ohlcv_times = ohlcv.index
+    # ohlcv.set_index("open_time") was called above; index is now DatetimeIndex
+    ohlcv_times = ohlcv.index  # DatetimeIndex (UTC)
     trades = []
 
+    # Convert OHLCV times to int64 microseconds for fast searchsorted
+    # (pandas datetime64[us] .asi8 gives microseconds; normalise to us throughout)
+    _tz = ohlcv_times.tz
+    if _tz is not None:
+        _naive = ohlcv_times.tz_convert('UTC').tz_localize(None)
+    else:
+        _naive = ohlcv_times
+    # Use microseconds to match pandas .asi8 for datetime64[us]
+    _ot_np = np.array(_naive, dtype='datetime64[us]').view('int64')  # int64 µs
+
     for sig_time, direction in active.items():
-        # Find next bar at or after signal time
-        entry_idx_arr = ohlcv_times.searchsorted(sig_time, side="left")
+        # Convert signal timestamp to int64 microseconds for searchsorted (matches _ot_np)
+        sig_ts = pd.Timestamp(sig_time)
+        if sig_ts.tzinfo is not None:
+            sig_us = int(np.datetime64(sig_ts.tz_convert('UTC').tz_localize(None), 'us').view('int64'))
+        else:
+            sig_us = int(np.datetime64(sig_ts, 'us').view('int64'))
+        # Find first OHLCV bar at or after signal time
+        entry_idx_arr = np.searchsorted(_ot_np, sig_us, side="left")
         # The signal is generated at sig_time; we execute at the NEXT bar
         # (to avoid look-ahead bias — we don't know the current open until
         #  the bar actually opens)
