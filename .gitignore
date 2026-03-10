@@ -1,11 +1,14 @@
+# Cache files
+*.pkl
 __pycache__/
 *.pyc
-*.pyo
-.ipynb_checkpoints/
-*.pkl
+
+# Temp files
+~$*
 .DS_Store
 
-# Speaking notes - local only
+# Local only - speaking notes
 CFRM522_Speaking_Notes.docx
 speaking_notes.md
 create_speaking_notes_docx.py
+create_presentation.py
