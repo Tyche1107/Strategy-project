@@ -1,31 +1,29 @@
 """
 Generate UW-style presentation for CFRM 522 Strategy Project
+With all figures included
 """
 
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.text import PP_ALIGN
 from pptx.enum.shapes import MSO_SHAPE
 import os
 
 # UW Colors
-UW_PURPLE = RGBColor(0x4B, 0x2E, 0x83)  # #4B2E83
-UW_GOLD = RGBColor(0xB7, 0xA5, 0x7A)    # #B7A57A
-UW_METALLIC_GOLD = RGBColor(0xE8, 0xE3, 0xD3)  # light gold for backgrounds
+UW_PURPLE = RGBColor(0x4B, 0x2E, 0x83)
+UW_GOLD = RGBColor(0xB7, 0xA5, 0x7A)
+UW_METALLIC_GOLD = RGBColor(0xE8, 0xE3, 0xD3)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-BLACK = RGBColor(0x00, 0x00, 0x00)
 DARK_GRAY = RGBColor(0x33, 0x33, 0x33)
 
 def set_slide_background(slide, color):
-    """Set solid background color for slide."""
     background = slide.background
     fill = background.fill
     fill.solid()
     fill.fore_color.rgb = color
 
 def add_title_shape(slide, text, left, top, width, height, font_size=32, bold=True, color=WHITE):
-    """Add a text box with title styling."""
     shape = slide.shapes.add_textbox(left, top, width, height)
     tf = shape.text_frame
     tf.word_wrap = True
@@ -39,11 +37,9 @@ def add_title_shape(slide, text, left, top, width, height, font_size=32, bold=Tr
     return shape
 
 def add_bullet_text(slide, bullets, left, top, width, height, font_size=18, color=DARK_GRAY):
-    """Add bulleted text."""
     shape = slide.shapes.add_textbox(left, top, width, height)
     tf = shape.text_frame
     tf.word_wrap = True
-
     for i, bullet in enumerate(bullets):
         if i == 0:
             p = tf.paragraphs[0]
@@ -54,45 +50,55 @@ def add_bullet_text(slide, bullets, left, top, width, height, font_size=18, colo
         p.font.color.rgb = color
         p.font.name = "Arial"
         p.level = 0
-        p.space_before = Pt(6)
-        p.space_after = Pt(6)
+        p.space_before = Pt(4)
+        p.space_after = Pt(4)
     return shape
 
 def add_header_bar(slide, text, prs):
-    """Add purple header bar at top of slide."""
-    # Purple bar
     shape = slide.shapes.add_shape(
         MSO_SHAPE.RECTANGLE,
         Inches(0), Inches(0),
-        prs.slide_width, Inches(1.2)
+        prs.slide_width, Inches(1.0)
     )
     shape.fill.solid()
     shape.fill.fore_color.rgb = UW_PURPLE
     shape.line.fill.background()
 
-    # Title text
     title_box = slide.shapes.add_textbox(
-        Inches(0.5), Inches(0.3),
-        Inches(9), Inches(0.8)
+        Inches(0.5), Inches(0.25),
+        Inches(12), Inches(0.6)
     )
     tf = title_box.text_frame
     p = tf.paragraphs[0]
     p.text = text
-    p.font.size = Pt(28)
+    p.font.size = Pt(26)
     p.font.bold = True
     p.font.color.rgb = WHITE
     p.font.name = "Arial"
 
 def add_gold_accent(slide, prs):
-    """Add gold accent line."""
     shape = slide.shapes.add_shape(
         MSO_SHAPE.RECTANGLE,
-        Inches(0), Inches(1.2),
-        prs.slide_width, Inches(0.05)
+        Inches(0), Inches(1.0),
+        prs.slide_width, Inches(0.04)
     )
     shape.fill.solid()
     shape.fill.fore_color.rgb = UW_GOLD
     shape.line.fill.background()
+
+def add_image(slide, img_path, left, top, width=None, height=None):
+    """Add image to slide."""
+    if os.path.exists(img_path):
+        if width and height:
+            slide.shapes.add_picture(img_path, left, top, width, height)
+        elif width:
+            slide.shapes.add_picture(img_path, left, top, width=width)
+        elif height:
+            slide.shapes.add_picture(img_path, left, top, height=height)
+        else:
+            slide.shapes.add_picture(img_path, left, top)
+        return True
+    return False
 
 def create_presentation():
     prs = Presentation()
@@ -100,10 +106,9 @@ def create_presentation():
     prs.slide_height = Inches(7.5)
 
     # ========== SLIDE 1: Title ==========
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
     set_slide_background(slide, UW_PURPLE)
 
-    # Gold accent bar
     shape = slide.shapes.add_shape(
         MSO_SHAPE.RECTANGLE,
         Inches(0), Inches(2.8),
@@ -113,19 +118,16 @@ def create_presentation():
     shape.fill.fore_color.rgb = UW_GOLD
     shape.line.fill.background()
 
-    # Main title
     add_title_shape(slide,
         "Funding Rate Contrarian Strategy",
         Inches(0.8), Inches(1.5), Inches(11), Inches(1),
         font_size=44, color=WHITE)
 
-    # Subtitle
     add_title_shape(slide,
         "BTC-USDT Perpetual Futures on Binance",
         Inches(0.8), Inches(3.2), Inches(11), Inches(0.6),
         font_size=24, bold=False, color=UW_METALLIC_GOLD)
 
-    # Author info
     add_title_shape(slide,
         "Adeline Wen\nCFRM 522 — Winter 2026",
         Inches(0.8), Inches(5.5), Inches(5), Inches(1),
@@ -138,288 +140,253 @@ def create_presentation():
     add_gold_accent(slide, prs)
 
     add_title_shape(slide, "Economic Mechanism",
-        Inches(0.5), Inches(1.5), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
+        Inches(0.5), Inches(1.3), Inches(5), Inches(0.5),
+        font_size=20, color=UW_PURPLE)
 
     add_bullet_text(slide, [
-        "Perpetual futures: funding paid every 8 hours",
-        "0.01% baseline ≈ 13% annualized cost to longs",
+        "Perpetual futures: funding paid every 8h",
+        "0.01% baseline ≈ 13% annualized",
         "Extreme funding (0.05%+) → 65%+ annualized",
-        "Crowded longs exit → price decline"
-    ], Inches(0.5), Inches(2.1), Inches(5.5), Inches(2.5), font_size=18)
+        "Crowded longs exit → price decline",
+        "Brunnermeier & Pedersen (2009): funding liquidity spiral"
+    ], Inches(0.5), Inches(1.8), Inches(5.5), Inches(2.5), font_size=16)
 
-    add_title_shape(slide, "Hypotheses",
-        Inches(6.5), Inches(1.5), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
+    add_title_shape(slide, "Pre-committed Hypotheses",
+        Inches(6.5), Inches(1.3), Inches(6), Inches(0.5),
+        font_size=20, color=UW_PURPLE)
 
     add_bullet_text(slide, [
-        "H1: Extreme z-score predicts 24h reversal",
+        "H1: Extreme z-score → 24h reversal (IC > 0.02)",
         "H2: High OI amplifies signal",
         "H3: Optimal threshold is non-linear",
         "H4: OOS Calmar positive (WF ratio > 0.5)"
-    ], Inches(6.5), Inches(2.1), Inches(6), Inches(2.5), font_size=18)
+    ], Inches(6.5), Inches(1.8), Inches(6), Inches(2), font_size=16)
 
-    # Key insight box
     box = slide.shapes.add_shape(
         MSO_SHAPE.ROUNDED_RECTANGLE,
-        Inches(0.5), Inches(5), Inches(12), Inches(1.2)
+        Inches(0.5), Inches(4.5), Inches(12), Inches(1)
     )
     box.fill.solid()
     box.fill.fore_color.rgb = UW_METALLIC_GOLD
     box.line.fill.background()
 
     add_title_shape(slide,
-        "Strategy: Fade extreme funding — short when z > threshold, long when z < -threshold",
-        Inches(0.8), Inches(5.3), Inches(11), Inches(0.8),
+        "Strategy: Short when z > threshold, Long when z < -threshold",
+        Inches(0.8), Inches(4.7), Inches(11), Inches(0.7),
         font_size=20, bold=True, color=UW_PURPLE)
 
-    # ========== SLIDE 3: Data & Methodology ==========
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_background(slide, WHITE)
-    add_header_bar(slide, "Data & Methodology", prs)
-    add_gold_accent(slide, prs)
-
-    add_title_shape(slide, "Data Source",
-        Inches(0.5), Inches(1.5), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    add_bullet_text(slide, [
-        "BTC-USDT perpetual (Binance)",
-        "Funding rates: every 8h, 2020-2024",
-        "OHLCV: hourly price data",
-        "~5,500 funding observations"
-    ], Inches(0.5), Inches(2.1), Inches(5.5), Inches(2), font_size=18)
-
-    add_title_shape(slide, "Constraints",
-        Inches(6.5), Inches(1.5), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    add_bullet_text(slide, [
-        "Leverage: 1x (no liquidation risk)",
-        "Fee: 0.04% taker each side",
-        "Max hold: 48 hours",
-        "Objective: Calmar ratio (not Sharpe)"
-    ], Inches(6.5), Inches(2.1), Inches(6), Inches(2), font_size=18)
-
-    add_title_shape(slide, "Why Calmar over Sharpe?",
-        Inches(0.5), Inches(4.5), Inches(12), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    add_bullet_text(slide, [
-        "BTC returns: excess kurtosis > 20, heavy tails violate normality assumption",
-        "Calmar = Ann. Return / Max Drawdown — directly penalizes worst-case loss",
-        "More relevant for leveraged crypto where one bad period can wipe account"
-    ], Inches(0.5), Inches(5.1), Inches(12), Inches(1.5), font_size=17)
-
-    # ========== SLIDE 4: Indicator Results ==========
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_background(slide, WHITE)
-    add_header_bar(slide, "Indicator Testing (Section 4)", prs)
-    add_gold_accent(slide, prs)
-
-    add_title_shape(slide, "Information Coefficient (IC) Results",
-        Inches(0.5), Inches(1.5), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    # IC table as text
-    add_bullet_text(slide, [
-        "Funding Z-Score (90d window):",
-        "   • 8h horizon:  IC = -0.02",
-        "   • 24h horizon: IC = -0.03 (p < 0.05) ✓",
-        "   • 48h horizon: IC = -0.025",
-        "",
-        "Negative IC confirms contrarian hypothesis:",
-        "Higher z-score → lower forward return"
-    ], Inches(0.5), Inches(2.1), Inches(5.5), Inches(3), font_size=17)
-
-    add_title_shape(slide, "H1 & H2 Test Results",
-        Inches(6.5), Inches(1.5), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    add_bullet_text(slide, [
-        "H1: IC > 0.02 at 24h ✓ SUPPORTED",
-        "   Statistically significant (p < 0.05)",
-        "",
-        "H2: OI amplification",
-        "   IC(high OI) > IC(low OI)",
-        "   Result varies by period"
-    ], Inches(6.5), Inches(2.1), Inches(6), Inches(2.5), font_size=17)
-
-    # Add image placeholder note
-    add_title_shape(slide,
-        "[See notebook: fig_ic_scatter.png — Z-Score vs Forward Return scatter plots]",
+    add_title_shape(slide, "Objective: Calmar Ratio (not Sharpe)",
         Inches(0.5), Inches(5.8), Inches(12), Inches(0.5),
-        font_size=14, bold=False, color=DARK_GRAY)
+        font_size=18, color=UW_PURPLE)
+    add_bullet_text(slide, [
+        "BTC returns: excess kurtosis > 20 → Sharpe assumes normality, inappropriate here"
+    ], Inches(0.5), Inches(6.3), Inches(12), Inches(0.5), font_size=15)
 
-    # ========== SLIDE 5: Trading Rules & Backtest ==========
+    # ========== SLIDE 3: Funding Rate Distribution ==========
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     set_slide_background(slide, WHITE)
-    add_header_bar(slide, "Trading Rules (Section 6)", prs)
+    add_header_bar(slide, "Data: Funding Rate Distribution", prs)
     add_gold_accent(slide, prs)
 
-    add_title_shape(slide, "Incremental Rule Testing",
-        Inches(0.5), Inches(1.5), Inches(12), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
+    add_image(slide, "data/fig_funding_dist.png",
+              Inches(0.3), Inches(1.3), width=Inches(12.7))
 
-    # Rules table
     add_bullet_text(slide, [
-        "Rule 0: Basic signal, 8h hold          → Baseline Calmar",
-        "Rule 1: + Max 48h hold cap             → Slight improvement",
-        "Rule 2: + 0.5% stop loss               → Reduced drawdown",
-        "Rule 3: + OI/volume filter             → Fewer trades, better quality"
-    ], Inches(0.5), Inches(2.1), Inches(7), Inches(2), font_size=17)
+        "Heavy tails (kurtosis > 10) • Slight positive skew (longs dominate) • NOT normally distributed"
+    ], Inches(0.5), Inches(6.8), Inches(12), Inches(0.5), font_size=14)
 
-    add_title_shape(slide, "Backtest Results (Full Period)",
-        Inches(0.5), Inches(4.2), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
+    # ========== SLIDE 4: ACF & Seasonality ==========
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_background(slide, WHITE)
+    add_header_bar(slide, "Data: Autocorrelation & Seasonality", prs)
+    add_gold_accent(slide, prs)
+
+    add_image(slide, "data/fig_funding_acf.png",
+              Inches(0.2), Inches(1.2), width=Inches(6.4))
+    add_image(slide, "data/fig_funding_seasonal.png",
+              Inches(6.7), Inches(1.2), width=Inches(6.4))
+
+    add_bullet_text(slide, [
+        "Left: ACF significant at lags 1-3 → short-term persistence, then decay (mean reversion)",
+        "Right: No strong weekday effect — funding driven by market sentiment, not calendar"
+    ], Inches(0.5), Inches(5.5), Inches(12), Inches(1), font_size=15)
+
+    # ========== SLIDE 5: Price & Events ==========
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_background(slide, WHITE)
+    add_header_bar(slide, "Data: BTC Price & Funding Rate (2020-2024)", prs)
+    add_gold_accent(slide, prs)
+
+    add_image(slide, "data/fig_events.png",
+              Inches(0.2), Inches(1.15), width=Inches(12.9))
+
+    add_bullet_text(slide, [
+        "Major events: March 2020 crash • May 2021 selloff • LUNA collapse (May 2022) • FTX collapse (Nov 2022)"
+    ], Inches(0.5), Inches(6.8), Inches(12), Inches(0.5), font_size=14)
+
+    # ========== SLIDE 6: IC Scatter ==========
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_background(slide, WHITE)
+    add_header_bar(slide, "Indicator Testing: Information Coefficient", prs)
+    add_gold_accent(slide, prs)
+
+    add_image(slide, "data/fig_ic_scatter.png",
+              Inches(0.2), Inches(1.15), width=Inches(12.9))
+
+    add_bullet_text(slide, [
+        "Negative slope: higher z-score → lower forward return • H1 SUPPORTED: IC statistically significant at 24h"
+    ], Inches(0.5), Inches(6.8), Inches(12), Inches(0.5), font_size=14)
+
+    # ========== SLIDE 7: Signal Timeline ==========
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_background(slide, WHITE)
+    add_header_bar(slide, "Signal Processing: Timeline (2021-2023)", prs)
+    add_gold_accent(slide, prs)
+
+    add_image(slide, "data/fig_signal_timeline.png",
+              Inches(0.2), Inches(1.1), width=Inches(12.9))
+
+    add_bullet_text(slide, [
+        "Green: Long signals (z < -1.5) • Red: Short signals (z > 1.5) • Signals cluster around extreme funding events"
+    ], Inches(0.5), Inches(6.8), Inches(12), Inches(0.5), font_size=14)
+
+    # ========== SLIDE 8: Equity Curves ==========
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_background(slide, WHITE)
+    add_header_bar(slide, "Trading Rules: Incremental Equity Curves", prs)
+    add_gold_accent(slide, prs)
+
+    add_image(slide, "data/fig_equity_curves.png",
+              Inches(0.3), Inches(1.1), width=Inches(12.7))
+
+    add_bullet_text(slide, [
+        "Rule 0: Basic • Rule 1: +Max hold • Rule 2: +Stop loss • Rule 3: +OI filter • Gray: BTC buy-and-hold"
+    ], Inches(0.5), Inches(6.8), Inches(12), Inches(0.5), font_size=14)
+
+    # ========== SLIDE 9: Grid Search Heatmap ==========
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_background(slide, WHITE)
+    add_header_bar(slide, "Parameter Optimization: Grid Search", prs)
+    add_gold_accent(slide, prs)
+
+    add_image(slide, "data/fig_gridsearch_heatmap.png",
+              Inches(0.3), Inches(1.15), width=Inches(12.7))
+
+    add_bullet_text(slide, [
+        "Left: Threshold vs Window heatmap • Right: Pardo check — best not extreme outlier • H3 SUPPORTED: peaked, not corner"
+    ], Inches(0.5), Inches(6.8), Inches(12), Inches(0.5), font_size=14)
+
+    # ========== SLIDE 10: Sensitivity ==========
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_background(slide, WHITE)
+    add_header_bar(slide, "Parameter Optimization: Sensitivity Analysis", prs)
+    add_gold_accent(slide, prs)
+
+    add_image(slide, "data/fig_sensitivity.png",
+              Inches(0.2), Inches(1.15), width=Inches(12.9))
+
+    add_bullet_text(slide, [
+        "Flat curve = robust to parameter choice • Sharp peak = potential overfit • Threshold most sensitive parameter"
+    ], Inches(0.5), Inches(6.8), Inches(12), Inches(0.5), font_size=14)
+
+    # ========== SLIDE 11: Walk-Forward ==========
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_background(slide, WHITE)
+    add_header_bar(slide, "Walk-Forward Analysis (Out-of-Sample)", prs)
+    add_gold_accent(slide, prs)
+
+    add_image(slide, "data/fig_walkforward.png",
+              Inches(0.3), Inches(1.1), width=Inches(12.7))
+
+    add_bullet_text(slide, [
+        "Most OOS windows positive • WF ratio ~0.3-0.6 • Parameter drift suggests regime dependence • H4 PARTIALLY SUPPORTED"
+    ], Inches(0.5), Inches(6.8), Inches(12), Inches(0.5), font_size=14)
+
+    # ========== SLIDE 12: Bootstrap Sharpe ==========
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_background(slide, WHITE)
+    add_header_bar(slide, "Overfitting: Bootstrap Sharpe Distribution", prs)
+    add_gold_accent(slide, prs)
+
+    add_image(slide, "data/fig_bootstrap_sharpe.png",
+              Inches(2), Inches(1.2), width=Inches(9))
+
+    add_title_shape(slide, "Deflated Sharpe Ratio (DSR)",
+        Inches(0.5), Inches(5.5), Inches(5), Inches(0.4),
+        font_size=18, color=UW_PURPLE)
+    add_bullet_text(slide, [
+        "Accounts for 120+ parameter trials",
+        "DSR adjusts for selection bias",
+        "Wide CI reflects sample uncertainty"
+    ], Inches(0.5), Inches(5.9), Inches(5), Inches(1.2), font_size=15)
+
+    add_title_shape(slide, "Top-N Removal Test",
+        Inches(7), Inches(5.5), Inches(5), Inches(0.4),
+        font_size=18, color=UW_PURPLE)
+    add_bullet_text(slide, [
+        "Remove best 20 trades",
+        "Still profitable → distributed edge",
+        "Not outlier-driven"
+    ], Inches(7), Inches(5.9), Inches(5.5), Inches(1.2), font_size=15)
+
+    # ========== SLIDE 13: Extension ==========
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_background(slide, WHITE)
+    add_header_bar(slide, "Extension: Cross-Asset & ETH", prs)
+    add_gold_accent(slide, prs)
+
+    add_image(slide, "data/fig_cross_asset_corr.png",
+              Inches(0.3), Inches(1.15), width=Inches(6))
+    add_image(slide, "data/fig_extension_equity.png",
+              Inches(6.5), Inches(1.15), width=Inches(6.5))
+
+    add_bullet_text(slide, [
+        "Left: BTC-ETH funding correlation ~0.7+ (macro-driven, limited diversification)",
+        "Right: ETH positive Calmar with BTC-optimized params (no re-fitting) → genuine microstructure effect"
+    ], Inches(0.5), Inches(5.8), Inches(12), Inches(0.8), font_size=15)
+
+    # ========== SLIDE 14: Conclusion ==========
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_background(slide, WHITE)
+    add_header_bar(slide, "Conclusion", prs)
+    add_gold_accent(slide, prs)
+
+    add_title_shape(slide, "Key Findings",
+        Inches(0.5), Inches(1.3), Inches(5), Inches(0.5),
+        font_size=20, color=UW_PURPLE)
+
+    add_bullet_text(slide, [
+        "Funding rate contrarian effect is real",
+        "Economic basis: crowding + margin pressure",
+        "IC statistically significant at 24h",
+        "OOS performance positive (40-60% degradation typical)",
+        "Cross-asset validation on ETH"
+    ], Inches(0.5), Inches(1.8), Inches(5.5), Inches(2.5), font_size=16)
+
+    add_title_shape(slide, "Backtest Results",
+        Inches(6.5), Inches(1.3), Inches(5), Inches(0.5),
+        font_size=20, color=UW_PURPLE)
 
     add_bullet_text(slide, [
         "Calmar Ratio: ~0.11",
         "Sharpe Ratio: ~0.77",
         "Max Drawdown: ~14%",
         "Win Rate: ~54%",
-        "Total Trades: ~125"
-    ], Inches(0.5), Inches(4.8), Inches(5), Inches(2), font_size=17)
+        "Total Trades: ~125 (2020-2024)"
+    ], Inches(6.5), Inches(1.8), Inches(6), Inches(2.5), font_size=16)
 
-    add_title_shape(slide, "vs Benchmark",
-        Inches(6.5), Inches(4.2), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    add_bullet_text(slide, [
-        "BTC Buy-and-Hold:",
-        "   Much higher return in bull markets",
-        "   But 70%+ max drawdown",
-        "",
-        "Strategy: Lower return, better risk-adjusted"
-    ], Inches(6.5), Inches(4.8), Inches(6), Inches(2), font_size=17)
-
-    # ========== SLIDE 6: Parameter Optimization ==========
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_background(slide, WHITE)
-    add_header_bar(slide, "Parameter Optimization (Section 7)", prs)
-    add_gold_accent(slide, prs)
-
-    add_title_shape(slide, "Grid Search (120 combinations)",
-        Inches(0.5), Inches(1.5), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    add_bullet_text(slide, [
-        "Parameters tested:",
-        "   • Threshold: [1.0, 1.2, 1.5, 1.8, 2.0]",
-        "   • Window: [60, 90, 120] periods",
-        "   • Hold hours: [4, 8, 16, 24, 48]",
-        "   • Stop loss: [None, 0.5%]"
-    ], Inches(0.5), Inches(2.1), Inches(5.5), Inches(2.5), font_size=17)
-
-    add_title_shape(slide, "Optimal Parameters",
-        Inches(6.5), Inches(1.5), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    add_bullet_text(slide, [
-        "Best Calmar configuration:",
-        "   • Threshold: ~1.5-2.0",
-        "   • Window: ~60-90 periods (20-30 days)",
-        "   • Hold: 8-16 hours",
-        "",
-        "H3: Non-monotonic threshold ✓"
-    ], Inches(6.5), Inches(2.1), Inches(6), Inches(2.5), font_size=17)
-
-    add_title_shape(slide, "Pardo Check",
-        Inches(0.5), Inches(5), Inches(12), Inches(0.5),
+    add_title_shape(slide, "Risks & Limitations",
+        Inches(0.5), Inches(4.5), Inches(12), Inches(0.5),
         font_size=20, color=UW_PURPLE)
 
     add_bullet_text(slide, [
-        "Best Calmar ~2 std above mean → Not extreme outlier, reduces overfit concern"
-    ], Inches(0.5), Inches(5.5), Inches(12), Inches(0.8), font_size=17)
-
-    # ========== SLIDE 7: Walk-Forward & Overfitting ==========
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_background(slide, WHITE)
-    add_header_bar(slide, "Walk-Forward & Overfitting (Sections 8-9)", prs)
-    add_gold_accent(slide, prs)
-
-    add_title_shape(slide, "Walk-Forward Analysis",
-        Inches(0.5), Inches(1.5), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    add_bullet_text(slide, [
-        "Rolling WF: 365-day train, 90-day test",
-        "Anchored WF: Expanding window",
-        "",
-        "Results:",
-        "   • WF Ratio: ~0.3-0.6",
-        "   • Most OOS windows positive",
-        "   • H4: Partially supported"
-    ], Inches(0.5), Inches(2.1), Inches(5.5), Inches(2.8), font_size=17)
-
-    add_title_shape(slide, "Overfitting Diagnostics",
-        Inches(6.5), Inches(1.5), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    add_bullet_text(slide, [
-        "Deflated Sharpe Ratio (DSR):",
-        "   Accounts for 120+ trials",
-        "   DSR indicates some selection bias",
-        "",
-        "Bootstrap Sharpe CI:",
-        "   Wide interval reflects uncertainty",
-        "",
-        "Top-N Removal: Still positive after removing best 20 trades"
-    ], Inches(6.5), Inches(2.1), Inches(6), Inches(3), font_size=16)
-
-    # Honest assessment box
-    box = slide.shapes.add_shape(
-        MSO_SHAPE.ROUNDED_RECTANGLE,
-        Inches(0.5), Inches(5.3), Inches(12), Inches(1)
-    )
-    box.fill.solid()
-    box.fill.fore_color.rgb = UW_METALLIC_GOLD
-    box.line.fill.background()
-
-    add_title_shape(slide,
-        "40-60% OOS degradation from IS is typical. Signal appears real but magnitude uncertain.",
-        Inches(0.8), Inches(5.5), Inches(11), Inches(0.7),
-        font_size=18, bold=False, color=UW_PURPLE)
-
-    # ========== SLIDE 8: Conclusion ==========
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_background(slide, WHITE)
-    add_header_bar(slide, "Conclusion & Extension", prs)
-    add_gold_accent(slide, prs)
-
-    add_title_shape(slide, "Key Findings",
-        Inches(0.5), Inches(1.5), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    add_bullet_text(slide, [
-        "Funding rate contrarian effect is real",
-        "Economic mechanism: crowding + margin pressure",
-        "OOS performance positive but degraded",
-        "Regime-dependent (better in volatile periods)"
-    ], Inches(0.5), Inches(2.1), Inches(5.5), Inches(2.5), font_size=17)
-
-    add_title_shape(slide, "Extension (Section 10)",
-        Inches(6.5), Inches(1.5), Inches(5), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    add_bullet_text(slide, [
-        "ETH cross-asset: Positive Calmar without re-fit",
-        "BTC-ETH funding correlation: ~0.7+",
-        "Calmar vs Sortino: Similar optimal params",
-        "Bear markets: Strategy performs better"
-    ], Inches(6.5), Inches(2.1), Inches(6), Inches(2.5), font_size=17)
-
-    add_title_shape(slide, "Risks & Limitations",
-        Inches(0.5), Inches(4.8), Inches(12), Inches(0.5),
-        font_size=22, color=UW_PURPLE)
-
-    add_bullet_text(slide, [
-        "Tail events (LUNA-style collapse) — funding stays extreme for extended periods",
-        "Market structure changes post-FTX may reduce future effectiveness",
+        "Tail events: LUNA-style collapse where funding stays extreme",
+        "Regime dependence: better in high-volatility periods",
+        "Market structure change post-FTX may reduce future effectiveness",
         "Crowding risk if strategy becomes widely known"
-    ], Inches(0.5), Inches(5.4), Inches(12), Inches(1.2), font_size=17)
+    ], Inches(0.5), Inches(5), Inches(12), Inches(1.5), font_size=16)
 
-    # ========== SLIDE 9: References ==========
+    # ========== SLIDE 15: References ==========
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     set_slide_background(slide, WHITE)
     add_header_bar(slide, "References", prs)
@@ -440,12 +407,13 @@ def create_presentation():
         "",
         "Liu, Y., Tsyvinski, A., & Wu, X. (2022). Common Risk Factors in Cryptocurrency.",
         "       Journal of Finance, 77(2), 1133-1177."
-    ], Inches(0.5), Inches(1.8), Inches(12), Inches(5), font_size=15)
+    ], Inches(0.5), Inches(1.5), Inches(12), Inches(5.5), font_size=15)
 
     # Save
     output_path = "CFRM522_Presentation.pptx"
     prs.save(output_path)
-    print(f"Presentation saved to: {output_path}")
+    print(f"Presentation saved: {output_path}")
+    print(f"Total slides: {len(prs.slides)}")
     return output_path
 
 if __name__ == "__main__":
