@@ -4,3 +4,8 @@ __pycache__/
 .ipynb_checkpoints/
 *.pkl
 .DS_Store
+
+# Speaking notes - local only
+CFRM522_Speaking_Notes.docx
+speaking_notes.md
+create_speaking_notes_docx.py
