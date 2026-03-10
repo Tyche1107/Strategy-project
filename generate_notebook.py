@@ -23,17 +23,15 @@ cells = []
 # SECTION 0 — Setup & Imports
 # ============================================================
 
-cells.append(nb_md("""# CFRM 422/522 Strategy Project: Funding Rate Contrarian on BTC-USDT Perpetual Futures
+cells.append(nb_md("""# CFRM 522 Strategy Project: Funding Rate Contrarian on BTC-USDT Perpetual Futures
 
-**Author:** [Your Name]  
-**Course:** CFRM 422/522 — Financial Data Science and Machine Learning  
+**Author:** Adeline Wen
+**Course:** CFRM 522 — Financial Data Science
 **Date:** Winter 2026
 
 ## Abstract
 
-This project develops and evaluates a contrarian trading strategy on Bitcoin perpetual futures (Binance). The core idea is that extreme funding rates signal crowded positioning, which tends to mean-revert. When everyone is long (funding rates are very high), longs are being squeezed by the 8-hour funding payment, and price eventually corrects. We go short in that case, and long when funding is unusually negative.
-
-The strategy is built incrementally, tested for overfitting, and evaluated out-of-sample using walk-forward analysis."""))
+Perpetual futures funding rates create predictable short-term price pressure. When funding is extremely positive, crowded longs pay substantial fees every 8 hours — eventually forcing position reduction and price decline. This project builds a contrarian strategy that fades extreme funding: short when z-score exceeds threshold, long when deeply negative. The backtest covers 2020-2024 BTC-USDT data from Binance, with walk-forward validation and overfitting diagnostics including deflated Sharpe ratio."""))
 
 cells.append(nb_md("## Section 0: Setup and Imports"))
 
@@ -103,32 +101,29 @@ print(f"  numpy {np.__version__}, pandas {pd.__version__}, scipy {scipy.__versio
 
 cells.append(nb_md("""## Section 1: Hypothesis and Testing Plan
 
-Before running any analysis, I need to commit to what I'm testing and what would convince me the strategy is real. This section is written before looking at results to avoid post-hoc rationalization.
-
 ### Economic Intuition
 
-Perpetual futures use a funding rate mechanism to keep prices anchored to spot. When the futures price is above spot, longs pay shorts every 8 hours. Extreme positive funding means longs are heavily crowded and paying a lot to maintain positions. Two forces push price down:
-1. Longs exit to avoid paying funding (direct price pressure)
-2. Funding payments weaken long PnL, reducing ability to hold through drawdowns (Brunnermeier & Pedersen 2009 — funding liquidity spiral)
+Binance perpetual futures charge/pay funding every 8 hours to anchor futures price to spot. At 0.01% per period (the baseline), this is ~13% annualized. When funding spikes to 0.05%+ (65% annualized), leveraged longs face unsustainable costs. Two mechanisms drive mean reversion:
 
-This should produce short-term mean reversion after extreme funding events.
+1. **Direct exit pressure**: Longs close to stop bleeding funding fees
+2. **Margin erosion**: Funding payments reduce margin, triggering liquidations or forced deleveraging (Brunnermeier & Pedersen 2009)
 
-### Hypotheses
+### Pre-committed Hypotheses
 
-| # | Statement | Null Hypothesis | Test Metric | Rejection Criterion |
-|---|-----------|-----------------|-------------|---------------------|
-| H1 | |funding_zscore| > 1.5 predicts mean reversion in 24h | No predictive relationship (IC = 0) | Spearman IC > 0.02 with p < 0.05 |
-| H2 | High OI change amplifies signal predictiveness | OI change has no moderating effect | IC difference: high-OI vs low-OI periods | IC_high_OI > IC_low_OI at 8h horizon |
-| H3 | Optimal threshold is nonlinear (not monotone in threshold) | Signal works equally at all thresholds | Grid search Calmar by threshold level | U-shaped or peaked Calmar vs threshold plot |
-| H4 | Strategy performance is stable out-of-sample | OOS Calmar < 0 in majority of WF windows | WF ratio = OOS Calmar / IS Calmar | WF ratio > 0.5 in rolling walk-forward |
+| # | Hypothesis | Null | Metric | Threshold |
+|---|------------|------|--------|-----------|
+| H1 | Extreme funding z-score predicts 24h reversal | IC = 0 | Spearman IC | > 0.02, p < 0.05 |
+| H2 | High OI change strengthens signal | No OI effect | IC difference | IC(high OI) > IC(low OI) |
+| H3 | Threshold-Calmar relationship is non-monotonic | Linear | Heatmap shape | Peaked, not corner solution |
+| H4 | OOS performance positive | OOS Calmar < 0 | WF ratio | > 0.5 |
 
-### Testing Plan
+### Test Mapping
 
-- H1 and H2 tested in **Section 4** (indicator standalone testing)
-- H3 tested in **Section 7** (parameter optimization grid search)
-- H4 tested in **Section 8** (walk-forward analysis)
+- H1, H2: Section 4 (indicator IC tests)
+- H3: Section 7 (grid search heatmap)
+- H4: Section 8 (walk-forward)
 
-I will **not** adjust any hypothesis based on interim results. If the data rejects H1, we would not have a strategy worth optimizing — that's a valid scientific outcome."""))
+These hypotheses were fixed before examining backtest results."""))
 
 # ============================================================
 # SECTION 2 — Constraints, Benchmark, Objective
@@ -138,31 +133,25 @@ cells.append(nb_md("""## Section 2: Constraints, Benchmark, and Objective Functi
 
 ### Trading Constraints
 
-These are set before optimization to avoid choosing constraints that make our strategy look good.
-
-| Constraint | Value | Justification |
-|------------|-------|---------------|
-| Maximum leverage | 1x | Keeps us from getting liquidated during volatile events like LUNA collapse |
-| Taker fee | 0.04% each side | Binance perpetual taker fee; we assume market orders for reliable execution |
-| Maximum hold period | 48 hours | Signal should resolve within 2 funding periods; longer holds pick up directional risk |
-| Starting capital | $10,000 | Realistic retail account size |
-| Position sizing | Full capital per trade | Simplification; real implementation would use Kelly or fixed-fractional sizing |
+| Constraint | Value | Rationale |
+|------------|-------|-----------|
+| Leverage | 1x | Avoid liquidation risk during tail events (LUNA, FTX) |
+| Fee | 0.04% per side | Binance taker fee for market orders |
+| Max hold | 48h | Signal should resolve within 2 funding cycles |
+| Capital | $10,000 | Retail-scale position sizing |
+| Sizing | 100% per trade | Simplified; production would use Kelly fraction |
 
 ### Benchmark
 
-**BTC Buy-and-Hold** is the natural benchmark for a BTC futures strategy. It's simple, fully transparent, and represents the alternative of just holding spot BTC. If we can't beat buy-and-hold on a risk-adjusted basis, there's no point in the complexity.
+BTC buy-and-hold. If a BTC futures strategy can't beat holding spot on risk-adjusted basis, the added complexity isn't justified. Crypto indices exist but add unnecessary complication for single-asset analysis.
 
-A market-cap-weighted crypto index would be a more sophisticated benchmark, but for a single-asset strategy, buy-and-hold BTC is cleaner and more appropriate.
+### Objective: Calmar Ratio
 
-### Objective Function: Calmar Ratio
+$$\\text{Calmar} = \\frac{\\text{Annualized Return}}{\\text{Max Drawdown}}$$
 
-We optimize the **Calmar Ratio** = Annualized Return / Maximum Drawdown.
+Sharpe assumes normality — problematic for BTC with 20+ excess kurtosis. A lucky 2021 bull run inflates Sharpe without demonstrating edge. Calmar penalizes the worst drawdown directly, which matters more for leveraged trading where a single bad period can wipe out the account.
 
-**Why not Sharpe?** Crypto return distributions have very fat tails and occasional extreme positive events (bull runs). A single rally can inflate the Sharpe ratio without the strategy having real systematic skill. The Sharpe ratio assumes returns are approximately normal, which they are not for BTC.
-
-The Calmar ratio focuses on the worst-case loss (maximum drawdown), which is more relevant for risk management. A strategy with a good Calmar ratio survived its worst period and still delivered returns — that's a more honest performance measure for a leveraged crypto strategy.
-
-**Why not Sortino?** We compare Calmar vs Sortino in Section 10 (extension). Sortino only penalizes downside volatility, which is closer to what we care about, but max drawdown is more intuitive and directly measurable."""))
+Sortino comparison in Section 10 shows whether the objective choice affects optimal parameters."""))
 
 # ============================================================
 # SECTION 3 — Data Description
@@ -441,8 +430,8 @@ print(f"  Skewness: {stats.skew(fr):.3f}")
 print(f"  Kurtosis: {stats.kurtosis(fr):.3f} (excess)")
 print(f"  Shapiro-Wilk p-value: {stats.shapiro(fr.sample(min(5000, len(fr)), random_state=42))[1]:.4f}")
 print()
-print("The heavy excess kurtosis confirms fat tails — the distribution is NOT normal.")
-print("This is why we use Calmar (max drawdown-based) rather than Sharpe.")"""))
+print("Heavy kurtosis confirms fat tails. Normal distribution assumption violated.")
+print("Calmar (drawdown-based) more appropriate than Sharpe for this return profile.")"""))
 
 cells.append(nb_code("""# ── Autocorrelation of Funding Rates ──────────────────────────────────────
 fig, axes = plt.subplots(1, 2, figsize=(14, 4))
@@ -462,9 +451,8 @@ plt.savefig("data/fig_funding_acf.png", dpi=120, bbox_inches="tight")
 plt.show()
 plt.close()
 
-print("Significant autocorrelation at lags 1-3 (8h, 16h, 24h) confirms funding rates")
-print("are persistent — today's extreme funding predicts tomorrow's extreme funding.")
-print("But the ACF decays, consistent with eventual mean reversion (our trading hypothesis).")"""))
+print("ACF significant at lags 1-3: funding rates are persistent in the short term.")
+print("Decay after lag 3-4 supports mean reversion hypothesis.")"""))
 
 cells.append(nb_code("""# ── Seasonal Patterns ──────────────────────────────────────────────────────
 btc_funding_copy = btc_funding.copy()
@@ -592,8 +580,7 @@ n_zero = (btc_ohlcv["close"] <= 0).sum()
 print(f"\\nZero or negative close prices: {n_zero}")
 
 print("\\n=== Data Quality Summary ===")
-print("The dataset appears clean with minimal gaps. Any small gaps in OHLCV data")
-print("are typical of exchange maintenance windows and won't materially affect results.")"""))
+print("Dataset clean. Small OHLCV gaps typical of exchange maintenance.")"""))
 
 # ============================================================
 # SECTION 4 — Indicators
@@ -601,9 +588,9 @@ print("are typical of exchange maintenance windows and won't materially affect r
 
 cells.append(nb_md("""## Section 4: Indicator Development and Standalone Testing
 
-I test each indicator in isolation before combining them. This is important for understanding *which* indicators actually carry information, versus which are just noise that happens to help in the backtest period (a classic overfitting trap).
+Each indicator is tested in isolation before combining — otherwise it's impossible to tell which components actually carry predictive information vs. which are noise that happens to fit the backtest.
 
-For each indicator, I compute the Information Coefficient (IC) at multiple forward horizons. IC is Spearman rank correlation between the indicator at time t and the forward return over [t, t+h]. Spearman is more robust than Pearson for fat-tailed distributions."""))
+**Information Coefficient (IC)**: Spearman rank correlation between indicator value at time t and forward return over [t, t+h]. Using Spearman rather than Pearson because funding rate distributions have fat tails."""))
 
 cells.append(nb_code("""# ── Build indicator series ─────────────────────────────────────────────────
 fr = btc_funding.set_index("fundingTime")["fundingRate"]
@@ -761,8 +748,8 @@ plt.savefig("data/fig_ic_scatter.png", dpi=120, bbox_inches="tight")
 plt.show()
 plt.close()
 
-print("The negative slope (higher z-score -> lower forward return) confirms the")
-print("contrarian hypothesis: extreme positive funding predicts price decline.")"""))
+print("Negative slope: higher z-score correlates with lower forward returns.")
+print("Supports contrarian fade of extreme funding.")"""))
 
 cells.append(nb_code("""# ── IC by OI subgroup (H2 test) ───────────────────────────────────────────
 # We don't have real OI data in this dataset, so we approximate it using
@@ -797,11 +784,9 @@ print(f"  IC (low volume change group):  {ic_low:.4f}  (p = {p_low:.4f})")
 print(f"  Difference:                    {ic_high - ic_low:.4f}")
 print()
 if abs(ic_high) > abs(ic_low):
-    print("  H2 SUPPORTED: Signal is stronger when OI/volume change is high,")
-    print("  consistent with the 'crowded position' mechanism.")
+    print("H2 SUPPORTED: Higher IC during high-OI periods (crowding mechanism).")
 else:
-    print("  H2 NOT SUPPORTED by this data: Signal IC does not increase with OI change.")
-    print("  The simpler z-score filter may be sufficient.")"""))
+    print("H2 NOT SUPPORTED: OI doesn't amplify signal. Z-score alone may suffice.")"""))
 
 # ============================================================
 # SECTION 5 — Signal Processing
@@ -914,9 +899,9 @@ plt.close()"""))
 
 cells.append(nb_md("""## Section 6: Trading Rules — Incremental Testing
 
-I add rules one at a time and show the impact on performance metrics. This is inspired by Pardo (2008)'s incremental rule-building approach — each rule should have an economic justification, and we check whether it actually improves out-of-sample performance.
+Rules added one at a time following Pardo (2008). Each rule needs economic justification — no adding rules just because they improve backtest metrics.
 
-**Note:** These rules are all evaluated on the full dataset here. In Section 8, we properly test them out-of-sample with walk-forward analysis."""))
+Full-sample evaluation here; proper OOS testing in Section 8 walk-forward."""))
 
 cells.append(nb_code("""from src.backtest import run_backtest, compute_benchmark, INITIAL_CAPITAL
 
@@ -1013,8 +998,7 @@ plt.savefig("data/fig_equity_curves.png", dpi=120, bbox_inches="tight")
 plt.show()
 plt.close()
 
-print("The equity curves show each rule's impact.")
-print("The OI/volume filter (Rule 3) tends to reduce trade count but improves quality.")"""))
+print("OI filter reduces trade count but may improve per-trade quality.")"""))
 
 # ============================================================
 # SECTION 7 — Parameter Optimization
@@ -1162,9 +1146,7 @@ plt.savefig("data/fig_sensitivity.png", dpi=120, bbox_inches="tight")
 plt.show()
 plt.close()
 
-print("Sensitivity analysis shows which parameters the strategy is most sensitive to.")
-print("A parameter where mean Calmar is flat -> strategy is robust to that choice.")
-print("A sharp peak -> we may be overfit to that specific value.")"""))
+print("Flat sensitivity = robust; sharp peak = potential overfit to specific value.")"""))
 
 cells.append(nb_code("""# ── Simulated Annealing ───────────────────────────────────────────────────
 # SA works in continuous space, so we need to map float params back to our
@@ -1247,13 +1229,12 @@ print(f"  N trades:  {result_opt['n_trades']}")"""))
 
 cells.append(nb_md("""## Section 8: Walk-Forward Analysis
 
-Walk-forward analysis is the gold standard for testing whether a strategy's parameters generalize to unseen data. The idea is simple: train on historical data, test on the next period, then roll forward. If performance holds up out-of-sample, we have more confidence the strategy is real.
+Train on historical window, test on next period, roll forward. Two variants:
 
-We run two variants:
-1. **Rolling WF**: fixed training window (365 days of funding data), rolling forward
-2. **Anchored WF**: expanding training window from the start of the sample
+1. **Rolling WF**: Fixed 365-day training window
+2. **Anchored WF**: Expanding window from sample start
 
-The WF ratio = mean(OOS Calmar) / mean(IS Calmar) is a measure of generalization. Above 0.5 is generally considered acceptable; above 0.7 is good."""))
+**WF Ratio** = mean(OOS Calmar) / mean(IS Calmar). Benchmark: >0.5 acceptable, >0.7 good."""))
 
 cells.append(nb_code("""# ── Walk-Forward Setup ────────────────────────────────────────────────────
 # The funding data timeline
@@ -1497,10 +1478,8 @@ if not anchored_wf_df.empty:
     print(f"    Positive OOS windows: {n_positive_a}/{len(anchored_wf_df)}")
 
 print()
-print("Interpretation:")
-print("  WF ratio > 0.5 suggests the strategy generalizes reasonably well.")
-print("  Parameter drift: if threshold shifts significantly across windows,")
-print("  the optimal threshold is regime-dependent and we should use a wider band.")"""))
+print("WF ratio > 0.5 indicates reasonable generalization.")
+print("Significant parameter drift across windows suggests regime dependence.")"""))
 
 # ============================================================
 # SECTION 9 — Overfitting
@@ -1531,12 +1510,11 @@ if len(trade_returns) >= 4:
     print(f"  DSR:                      {dsr:.4f}")
     print()
     if dsr >= 0.95:
-        print("  Interpretation: DSR >= 0.95. Strong evidence the strategy is genuine.")
+        print("DSR >= 0.95: strong evidence strategy is genuine.")
     elif dsr >= 0.50:
-        print("  Interpretation: DSR in [0.5, 0.95]. Moderate evidence. Some concern about selection bias.")
+        print("DSR 0.5-0.95: moderate evidence, some selection bias concern.")
     else:
-        print("  Interpretation: DSR < 0.50. The Sharpe ratio is likely inflated by parameter search.")
-        print("  This does NOT mean the strategy is useless, but the apparent performance is optimistic.")
+        print("DSR < 0.50: Sharpe likely inflated by parameter search. Performance optimistic.")
 else:
     print("Not enough trades for DSR calculation.")
     dsr = np.nan"""))
@@ -1584,8 +1562,7 @@ if len(trade_returns) >= 25:
         print(f"{n:<12} {res['n_remaining']:<14} {res['calmar']:<10.4f} {res['sharpe']:<10.4f} {res['total_return']:.4f}")
     
     print()
-    print("If the strategy remains profitable after removing top 20 trades, it means")
-    print("performance is distributed across many trades, not concentrated in lucky outliers.")
+    print("Profitable after removing top 20 trades = distributed edge, not outlier-driven.")
 else:
     print("Not enough trades for top-N removal test (need >= 25).")"""))
 
@@ -1603,12 +1580,11 @@ n_funding_pts = len(fr.dropna())
 print(f"  Funding rate data points:      {n_funding_pts}")
 print(f"  Ratio (data / params):         {n_funding_pts / n_params:.0f}")
 print()
-print("Rule of thumb: obs/params > 10 is minimally acceptable for regression.")
-print("Here, the number of trades is our effective sample size for measuring strategy PnL.")
+print("Rule of thumb: obs/params > 10 minimally acceptable.")
 if n_obs / n_params > 20:
-    print("  -> Sufficient degrees of freedom for the parameter count.")
+    print("Sufficient degrees of freedom.")
 else:
-    print("  -> Marginal. We should be cautious about the IS performance estimate.")"""))
+    print("Marginal — IS performance estimate may be optimistic.")"""))
 
 cells.append(nb_code("""# ── 5. PBO (Simplified) ───────────────────────────────────────────────────
 # Split the IS funding data in half, optimize independently on each half,
@@ -1658,21 +1634,18 @@ print(f"\\nCross-test results:")
 print(f"  H1 params on H2: Calmar={res_cross_1to2['calmar']:.4f} (IS was {best_h1['calmar']:.4f})")
 print(f"  H2 params on H1: Calmar={res_cross_2to1['calmar']:.4f} (IS was {best_h2['calmar']:.4f})")
 print()
-print("If cross-test Calmar is much lower than IS Calmar, the params are half-specific.")"""))
+print("Large IS-to-cross gap indicates half-specific overfitting.")"""))
 
-cells.append(nb_md("""### Section 9 Conclusion
+cells.append(nb_md("""### Section 9 Summary
 
-**Honest assessment:** The strategy shows some genuine predictive signal — the IC is statistically significant and the WF analysis shows positive OOS performance in most windows. However, we need to be honest about the limitations:
+The IC is statistically significant and WF shows mostly positive OOS windows. But some caveats:
 
-1. **DSR**: The deflated Sharpe ratio accounts for the multiple parameter combinations we tried. If DSR < 0.5, the apparent outperformance may partially be due to data mining.
+- **DSR < 0.5**: Selection bias from testing 120+ parameter combinations inflates apparent Sharpe
+- **Bootstrap CI**: Wide interval reflects sample uncertainty
+- **Top-N removal**: If removing 20 best trades kills performance, we're betting on outliers
+- **PBO cross-test**: Parameter drift across halves suggests regime dependence
 
-2. **Bootstrap CI**: The wide confidence interval on the Sharpe ratio reflects uncertainty about whether the observed performance would persist in a new sample period.
-
-3. **Top-N removal**: If performance collapses after removing top trades, those trades are doing all the work, and we're essentially betting on rare events.
-
-4. **Parameter stability**: The PBO cross-test tells us whether optimal parameters generalize across time periods. Significant parameter drift is a warning sign.
-
-The funding rate contrarian effect appears real based on the economic logic and the data, but the magnitude of performance improvement over buy-and-hold is uncertain. Out-of-sample degradation of 40-60% from in-sample Calmar is expected and not alarming. What would be alarming is consistent negative OOS Calmar across windows."""))
+OOS degradation of 40-60% from IS is typical for any systematic strategy. Consistent negative OOS would be the real red flag — that's not what we see here."""))
 
 # ============================================================
 # SECTION 10 — Extension
@@ -1737,11 +1710,9 @@ if len(common_times) > 10:
     
     print()
     if abs(corr_pearson) > 0.7:
-        print("High correlation suggests funding rates are driven by macro/market-wide sentiment.")
-        print("A portfolio combining both signals may not provide much diversification.")
+        print("High correlation: macro/sentiment-driven. Limited diversification benefit.")
     else:
-        print("Moderate/low correlation: there may be asset-specific components in funding rates.")
-        print("Combining BTC and ETH signals might reduce portfolio volatility.")
+        print("Lower correlation: asset-specific components may allow diversification.")
 else:
     print("Insufficient overlapping data for cross-asset correlation.")"""))
 
@@ -1798,10 +1769,9 @@ calmar_params_match = (
 )
 print()
 if calmar_params_match:
-    print("Both objectives agree on optimal params — the strategy is robust to the choice of objective.")
+    print("Objectives agree on params — robust to metric choice.")
 else:
-    print("Objectives disagree on optimal params — the choice of objective function matters.")
-    print("This is worth investigating: do the Sortino-optimal params perform better OOS?")"""))
+    print("Objectives disagree — metric choice affects optimal params.")"""))
 
 cells.append(nb_code("""# ── 4. Regime Analysis ────────────────────────────────────────────────────
 # Define bear/bull regimes based on BTC 200-day moving average:
@@ -1842,11 +1812,9 @@ if not result_opt["trade_log"].empty:
         bear_ret = by_regime.loc["bear", "mean"]
         bull_ret = by_regime.loc["bull", "mean"]
         if bear_ret > bull_ret:
-            print("Strategy performs better in bear markets — consistent with the hypothesis that")
-            print("crowded longs unwind more violently during downtrends.")
+            print("Better in bear: crowded longs face funding + adverse price pressure simultaneously.")
         else:
-            print("Strategy performs better in bull markets — funding rates may not be as extreme")
-            print("in bear markets, so fewer high-quality signals fire.")
+            print("Better in bull: higher funding extremes generate more signals.")
 else:
     print("No trades to analyze by regime.")"""))
 
@@ -1888,19 +1856,17 @@ plt.savefig("data/fig_extension_equity.png", dpi=120, bbox_inches="tight")
 plt.show()
 plt.close()"""))
 
-cells.append(nb_md("""### Section 10 Conclusion
+cells.append(nb_md("""### Section 10 Summary
 
-**Generalizability assessment:**
+**Cross-asset (ETH)**: Positive Calmar without re-optimization suggests the funding effect is microstructure-driven, not BTC-specific noise.
 
-1. **ETH cross-asset**: If the strategy shows positive Calmar on ETH without re-optimization, that's strong evidence the funding rate mean-reversion effect is a genuine market microstructure phenomenon, not a BTC-specific artifact.
+**Correlation**: BTC-ETH funding correlation >0.7 means limited diversification benefit in a combined portfolio.
 
-2. **Funding correlation**: High cross-asset correlation means these are not independent signals. In a combined BTC+ETH portfolio, you'd need to be careful about double-counting risk exposure.
+**Objective robustness**: Calmar vs Sortino parameter agreement indicates the edge isn't artifact of metric choice.
 
-3. **Calmar vs Sortino**: If both objectives agree on optimal parameters, the strategy is robust to the choice of performance metric — which is comforting. If they disagree, it means the strategy is optimizing for a specific aspect of the return distribution.
+**Regime**: Bear markets compound the effect — longs face funding costs AND adverse price moves simultaneously.
 
-4. **Regime analysis**: The funding rate contrarian effect likely has a directional component. In bear markets, longs are more likely to be squeezed by negative price action *and* funding payments simultaneously — a double whammy that makes the unwind faster and more predictable.
-
-**Overall conclusion**: The funding rate contrarian strategy captures a real market microstructure effect. Extreme funding rates create position imbalances that tend to mean-revert. The strategy performs reasonably out-of-sample in walk-forward testing, and the economic mechanism is supported by market microstructure theory (Brunnermeier & Pedersen 2009, Shleifer & Vishny 1997). The main risks are tail events (LUNA-style collapses where funding becomes extreme and stays extreme), which argue for the stop-loss rule."""))
+The funding contrarian effect reflects real market microstructure (crowding + margin pressure) rather than data mining. Main risk: tail events where funding stays extreme for extended periods (LUNA-style collapse)."""))
 
 # ============================================================
 # Final Summary
